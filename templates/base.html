@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}EHR ABE Demo System{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .tab {
+            flex: 1;
+            padding: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+            text-decoration: none;
+            color: black;
+        }
+        .tab:hover {
+            background: #e9ecef;
+        }
+        .tab.active {
+            background: white;
+            color: #3498db;
+            font-weight: 600;
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #3498db;
+        }
+        .content {
+            padding: 40px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        .status-panel {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .attribute-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .attribute-option {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .attribute-option:hover {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        .attribute-option.selected {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 EHR ABE Demo System</h1>
+            <p>Hệ thống Bảo mật Hồ sơ Bệnh án Điện tử sử dụng Attribute-Based Encryption</p>
+        </div>
+      <div class="tabs">
+    {% if session.get('user') %}
+        {% if session.user.role == 'doctor' %}
+            <a href="{{ url_for('creator.data_creator') }}" class="tab {% if active_tab == 'data_creator' %}active{% endif %}">📝 Tạo Hồ sơ</a>
+            <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Xem Hồ sơ</a>
+        {% elif session.user.role == 'patient' %}
+             <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Hồ sơ của tôi</a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}" class="tab">🚪 Đăng xuất ({{ session.user.name }})</a>
+    {% else %}
+        <a href="{{ url_for('auth.login') }}" class="tab">🔑 Đăng nhập</a>
+        <a href="{{ url_for('auth.register') }}" class="tab">📝 Đăng ký</a>
+    {% endif %}
+</div>
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    {% block scripts %}
+   
+    {% endblock %}
+</body>
+</html>

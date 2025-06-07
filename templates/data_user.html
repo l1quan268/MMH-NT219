@@ -1,0 +1,83 @@
+<!-- home/quan05/doan/templates/data_user.html -->
+{% extends "base.html" %}
+{% block title %}Xem Hồ sơ - EHR ABE Demo{% endblock %}
+
+{% block head %}
+<style>
+.search-panel {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+.results-list { list-style: none; padding: 0; }
+.result-item {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-left: 5px solid #3498db;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+.result-item .info { flex-grow: 1; }
+.result-item p { margin: 0 0 8px 0; }
+.result-item code {
+    background-color: #e9ecef;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    color: #c0392b;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>👤 Truy cập Hồ sơ Bệnh án</h2>
+
+{% if session.user.role == 'doctor' %}
+    <div class="search-panel">
+        <h4>Tìm kiếm Hồ sơ</h4>
+        <p>Với vai trò bác sĩ, bạn có thể tìm kiếm các hồ sơ trong hệ thống. Nhấn nút dưới đây để tải danh sách.</p>
+        <form method="POST" action="{{ url_for('user.data_user') }}">
+            <button class="btn btn-primary" type="submit">🔍 Tìm tất cả Hồ sơ</button>
+        </form>
+    </div>
+{% elif session.user.role == 'patient' %}
+    <div class="search-panel">
+        <h4>Hồ sơ Bệnh án của bạn</h4>
+        <p>Chào <strong>{{ session.user.name }}</strong>, đây là danh sách các hồ sơ bệnh án của bạn được lưu trên hệ thống.</p>
+    </div>
+{% endif %}
+
+{% if results is defined %}
+    <h3 style="margin-top: 20px;">
+        {% if results %}
+            Kết quả:
+        {% else %}
+            Không tìm thấy hồ sơ nào.
+        {% endif %}
+    </h3>
+    <ul class="results-list">
+        {% for record in results %}
+            <li class="result-item">
+                <div class="info">
+                    <p><strong>ID Hồ sơ:</strong> {{ record._id }}</p>
+                    <p><strong>Bệnh nhân:</strong> {{ record.patient_name }}</p>
+                    <p><strong>Chính sách truy cập:</strong> <code>{{ record.access_policy }}</code></p>
+                </div>
+                <div class="actions">
+                    <form action="{{ url_for('user.decrypt_record') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="doc_id" value="{{ record._id }}">
+                        <button type="submit" class="btn btn-success">🔑 Giải mã</button>
+                    </form>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}
