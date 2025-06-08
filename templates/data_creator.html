@@ -1,9 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Tạo Hồ sơ - EHR ABE Demo{% endblock %}
+{% block title %}Tạo & Upload Hồ sơ{% endblock %}
 
 {% block head %}
-<!-- CSS không thay đổi, giữ nguyên -->
 <style>
+/* ... Toàn bộ CSS không đổi ... */
+.form-section {
+    margin-bottom: 40px;
+    border-bottom: 2px dashed #ccc;
+    padding-bottom: 20px;
+}
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
 .policy-builder { background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 20px 0; border: 1px solid #dee2e6; }
 .attribute-group { margin-bottom: 20px; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #e9ecef; }
 .attribute-group h4 { color: #2c3e50; margin-bottom: 10px; font-size: 1.1em; }
@@ -11,47 +20,46 @@
 .attribute-option { display: inline-block; padding: 8px 15px; border: 2px solid #ccc; border-radius: 20px; cursor: pointer; user-select: none; transition: all 0.2s ease-in-out; font-size: 0.9em; }
 .attribute-option:hover { border-color: #3498db; background: #eaf5fc; }
 .attribute-option.selected { background-color: #3498db; color: white; border-color: #2980b9; font-weight: 600; }
-textarea#policy-expression { background-color: #f0f0f0; cursor: not-allowed; font-family: monospace; font-size: 1em; color: #333; }
-.status-panel { background: #f8f9fa; border-left: 5px solid #27ae60; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
-.status-panel ul { list-style-type: none; padding-left: 5px; }
-.status-panel li { margin-top: 10px; }
+.status-panel {
+    background: #e8f5e9;
+    border-left: 5px solid #4CAF50;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
 </style>
 {% endblock %}
-
 
 {% block content %}
 <h2>📝 Tạo và Mã hóa Hồ sơ Bệnh án</h2>
 
-<!-- ======================================================================= -->
-<!-- LOGIC HIỂN THỊ DỰA TRÊN BIẾN `step` TỪ FLASK -->
-<!-- ======================================================================= -->
-
-{% if step == 'prepare' or not step %}
-    <!-- ==================== BƯỚC 1: FORM CHUẨN BỊ VÀ MÃ HÓA ==================== -->
-    <form id="data-creator-form" action="{{ url_for('creator.encrypt') }}" method="POST" enctype="multipart/form-data">
-        <h3>Bước 1: Chuẩn bị và Mã hóa</h3>
-        <p>Điền thông tin, chọn file, xây dựng chính sách và nhấn "Mã hóa". Dữ liệu sẽ được mã hóa an toàn trên server.</p>
-
+<!-- ====================================================================== -->
+<!-- ==================== BƯỚC 1: FORM MÃ HÓA DỮ LIỆU ==================== -->
+<!-- ====================================================================== -->
+<div class="form-section">
+    <h3>Bước 1: Mã hóa Dữ liệu</h3>
+    <p>Điền thông tin và chọn các file cần thiết. Sau khi nhấn "Bắt đầu Mã hóa", các file đã mã hóa sẽ được tạo trong thư mục <code>output/</code> trên máy của bạn.</p>
+    
+    <form id="encrypt-form" action="{{ url_for('creator.encrypt') }}" method="POST" enctype="multipart/form-data">
         <div class="form-group">
           <label for="patient_name">Tên Bệnh nhân</label>
-          <input type="text" id="patient_name" name="patient_name" placeholder="Ví dụ: Nguyễn Văn A" required class="form-control" />
+          <input type="text" id="patient_name" name="patient_name" required class="form-control" />
         </div>
-        
         <div class="form-group">
-          <label for="medical_file">Hồ sơ y tế (chọn file)</label>
-          <input type="file" id="medical_file" name="medical_file" accept=".txt,.pdf,.jpg,.png" required class="form-control" />
-          <p id="file-name-display" style="margin-top: 5px; font-style: italic; color: #555;"></p>
+          <label for="medical_file">Hồ sơ y tế</label>
+          <input type="file" id="medical_file" name="medical_file" required class="form-control" />
         </div>
-        
         <div class="form-group">
-          <label for="public_key_file">Public Key của Hệ thống (chọn file .pk)</label>
+          <label for="public_key_file">Public Key</label>
           <input type="file" id="public_key_file" name="public_key_file" accept=".pk" required class="form-control" />
         </div>
         
-        <!-- Policy Builder -->
+        <!-- ======================================================== -->
+        <!-- == POLICY BUILDER ĐÃ ĐƯỢC THÊM LẠI == -->
+        <!-- ======================================================== -->
         <div class="policy-builder">
-            <h3>🔒 Xây dựng Chính sách Truy cập (CP-ABE)</h3>
-            <p>Chọn các thuộc tính. Các thuộc tính trong cùng một nhóm sẽ được kết nối bằng toán tử `or`, giữa các nhóm khác nhau sẽ là `and`.</p>
+            <h3>🔒 Xây dựng Chính sách Truy cập</h3>
+            <p>1. Chọn các thuộc tính. 2. Nhấn "Tạo & Tải về Chính sách". 3. Chọn lại file vừa tải về ở ô bên dưới.</p>
             
             <div class="attribute-group">
                 <h4>👥 Vai trò (chọn ít nhất 1):</h4>
@@ -70,135 +78,88 @@ textarea#policy-expression { background-color: #f0f0f0; cursor: not-allowed; fon
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="policy-expression">Chính sách được tạo (Read-only)</label>
-                <textarea id="policy-expression" name="policy_expression" rows="3" placeholder="Chính sách sẽ hiện ở đây sau khi bạn nhấn nút 'Tạo Chính sách'" readonly required></textarea>
-            </div>
-            
-            <button type="button" class="btn btn-primary" id="generate-policy-btn">⚙️ Tạo Chính sách</button>
+            <button type="button" class="btn btn-primary" id="generate-policy-btn">⚙️ Tạo & Tải về Chính sách</button>
             <button type="button" class="btn btn-danger" id="clear-all-btn">🗑️ Xóa lựa chọn</button>
         </div>
 
-        <button type="submit" class="btn btn-success" style="margin-top: 20px; width: 100%; padding: 15px; font-size: 1.2em;">🔒 Bắt đầu Mã hóa</button>
+        <div class="form-group">
+          <label for="policy_file">File Chính sách (chọn file <code>access_policy.txt</code> vừa tải về)</label>
+          <input type="file" id="policy_file" name="policy_file" accept=".txt" required class="form-control" />
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">🔒 Bắt đầu Mã hóa</button>
     </form>
-{% endif %}
+</div>
 
-
-<!-- ======================================================================= -->
-<!-- == PHẦN BỊ THIẾU ĐÃ ĐƯỢC BỔ SUNG LẠI TẠI ĐÂY == -->
-<!-- ======================================================================= -->
-{% if step == 'confirm' %}
-    <!-- ==================== BƯỚC 2: FORM XÁC NHẬN VÀ UPLOAD ==================== -->
-    <h3>Bước 2: Xác nhận và Tải lên Cloud</h3>
+<!-- ====================================================================== -->
+<!-- ==================== BƯỚC 2: FORM UPLOAD DỮ LIỆU ===================== -->
+<!-- ====================================================================== -->
+<div class="form-section">
+    <h3>Bước 2: Tải lên Cloud</h3>
     
+    {% if step == 'confirm' %}
     <div class="status-panel">
-        <h4 style="color: #155724;">✅ Mã hóa thành công!</h4>
-        <p>Các tệp sau đã được tạo trên server và sẵn sàng để tải lên Cloud cho bệnh nhân <strong>{{ files.patient_name }}</strong>:</p>
-        <ul>
-            <li><strong>Bản mã hồ sơ:</strong> <code>{{ files.ciphertext_file }}</code></li>
-            <li><strong>Khóa mã hóa:</strong> <code>{{ files.key_file }}</code></li>
-            <li><strong>Chính sách áp dụng:</strong> <code>{{ files.policy }}</code></li>
-        </ul>
+        <h4>✅ Mã hóa thành công!</h4>
+        <p>Các tệp đã được tạo trong thư mục <strong>output/</strong>. Bây giờ, hãy chọn lại chúng để tải lên Cloud cho bệnh nhân <strong>{{ info.patient_name }}</strong>.</p>
     </div>
-    
-    <form action="{{ url_for('creator.upload') }}" method="POST">
-        <p>Nhấn nút dưới đây để hoàn tất việc tải hồ sơ đã mã hóa lên cơ sở dữ liệu trên Cloud.</p>
-        <button type="submit" class="btn btn-success" style="width: 100%; padding: 15px; font-size: 1.2em;">☁️ Tải lên Cloud</button>
-        <a href="{{ url_for('creator.data_creator') }}" class="btn btn-danger" style="width: 100%; padding: 15px; font-size: 1.2em; text-align: center;">Hủy bỏ và Bắt đầu lại</a>
+    {% else %}
+    <p>Sau khi hoàn thành Bước 1, hãy chọn các file đã được mã hóa từ thư mục <code>output/</code> của bạn vào các ô tương ứng dưới đây.</p>
+    {% endif %}
+
+    <form id="upload-form" action="{{ url_for('creator.upload') }}" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="ciphertext_file_upload">1. Chọn lại File Bản mã Hồ sơ (<code>output/ciphertext.bin</code>)</label>
+          <input type="file" id="ciphertext_file_upload" name="ciphertext_file_upload" accept=".bin" required class="form-control" />
+        </div>
+        <div class="form-group">
+          <label for="key_file_upload">2. Chọn lại File Khóa đã mã hóa (<code>output/aes_key_cpabe.ct</code>)</label>
+          <input type="file" id="key_file_upload" name="key_file_upload" accept=".ct" required class="form-control" />
+        </div>
+        
+        <button type="submit" class="btn btn-success" style="width: 100%;">🚀 Tải lên Cloud</button>
     </form>
-{% endif %}
-
+</div>
 {% endblock %}
-
 
 {% block scripts %}
 <script>
 // Chờ cho toàn bộ tài liệu HTML được tải xong rồi mới chạy mã JS
 document.addEventListener('DOMContentLoaded', function() {
   
-  // --- Tự động gắn sự kiện cho các nút chọn thuộc tính ---
-  const attributeOptions = document.querySelectorAll('.attribute-option');
-  attributeOptions.forEach(option => {
-    option.addEventListener('click', function() {
-      this.classList.toggle('selected');
-    });
+  // Tự động gắn sự kiện cho các nút chọn thuộc tính
+  document.querySelectorAll('.attribute-option').forEach(option => {
+    option.addEventListener('click', function() { this.classList.toggle('selected'); });
   });
 
-  // --- Tự động gắn sự kiện cho nút "Tạo Chính sách" ---
-  const generateBtn = document.getElementById('generate-policy-btn');
-  if(generateBtn) {
-      generateBtn.addEventListener('click', function() {
-          const groups = {};
-          const selectedElems = document.querySelectorAll('.attribute-option.selected');
-          
-          if (selectedElems.length === 0) {
-              alert('Vui lòng chọn ít nhất một thuộc tính!');
-              return;
-          }
-          
-          selectedElems.forEach(el => {
-              const group = el.getAttribute('data-group');
-              const policy = el.getAttribute('data-policy');
-              if (!groups[group]) {
-                  groups[group] = [];
-              }
-              groups[group].push(policy);
-          });
-          
-          if (!groups.role || groups.role.length === 0) {
-              alert('Bắt buộc phải chọn ít nhất một thuộc tính trong nhóm "Vai trò"!');
-              return;
-          }
-          
-          const policyParts = [];
-          for (const policies of Object.values(groups)) {
-              if (policies.length > 1) {
-                  policyParts.push(`(${policies.join(' or ')})`);
-              } else {
-                  policyParts.push(policies[0]);
-              }
-          }
-          
-          const finalPolicy = policyParts.join(' and ');
-          document.getElementById('policy-expression').value = finalPolicy;
-          alert('✅ Chính sách đã được tạo thành công!');
-      });
-  }
-  
-  // --- Tự động gắn sự kiện cho nút "Xóa lựa chọn" ---
-  const clearBtn = document.getElementById('clear-all-btn');
-  if(clearBtn) {
-      clearBtn.addEventListener('click', function() {
-          document.querySelectorAll('.attribute-option.selected').forEach(el => el.classList.remove('selected'));
-          document.getElementById('policy-expression').value = '';
-      });
-  }
+  // Tự động gắn sự kiện cho nút "Xóa lựa chọn"
+  document.getElementById('clear-all-btn').addEventListener('click', function() {
+      document.querySelectorAll('.attribute-option.selected').forEach(el => el.classList.remove('selected'));
+  });
 
-  // --- Gắn sự kiện kiểm tra form trước khi gửi ---
-  const mainForm = document.getElementById('data-creator-form');
-  if (mainForm) {
-      mainForm.addEventListener('submit', function(event) {
-          const policyText = document.getElementById('policy-expression').value.trim();
-          if (policyText.length === 0) {
-              alert('Vui lòng "Tạo Chính sách" trước khi mã hóa!');
-              event.preventDefault(); // Ngăn form được gửi đi
-          }
-      });
-  }
+  // LOGIC CHO NÚT TẠO CHÍNH SÁCH
+  document.getElementById('generate-policy-btn').addEventListener('click', function() {
+      const selectedElems = document.querySelectorAll('.attribute-option.selected');
+      if (selectedElems.length === 0) {
+          alert('Vui lòng chọn ít nhất một thuộc tính để tạo chính sách!');
+          return;
+      }
 
-  // --- Hiển thị tên file đã chọn ---
-  const fileInput = document.getElementById('medical_file');
-  const fileNameDisplay = document.getElementById('file-name-display');
-  if (fileInput) {
-      fileInput.addEventListener('change', function() {
-          if (this.files.length > 0) {
-              fileNameDisplay.textContent = `Đã chọn: ${this.files[0].name}`;
-          } else {
-              fileNameDisplay.textContent = '';
-          }
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = "{{ url_for('creator.generate_policy') }}";
+      
+      selectedElems.forEach(el => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'policies';
+          input.value = el.getAttribute('data-policy') + '|' + el.getAttribute('data-group');
+          form.appendChild(input);
       });
-  }
 
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+  });
 });
 </script>
 {% endblock %}
