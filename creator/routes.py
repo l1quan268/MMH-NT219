@@ -1,13 +1,12 @@
-# home/quan05/doan/creator/routes.py
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Thêm send_file và io
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+# Thêm jsonify để trả về dữ liệu cho AJAX, và các thư viện cần thiết
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file, jsonify
 from functools import wraps
-import io # Dùng để tạo file trong bộ nhớ
+import io
+from pymongo import MongoClient # Import MongoClient để tìm kiếm
 
 from aes_encrypt import aes_encrypt
 from cpabe_encrypt import cpabe_encrypt
@@ -30,11 +29,39 @@ def doctor_required(f):
 @creator_bp.route('/data_creator', methods=['GET'])
 @doctor_required
 def data_creator():
-    session.pop('upload_info', None) # Xóa session cũ nếu có
+    # Trang ban đầu, không có bước nào được xác nhận
     return render_template('data_creator.html', step='prepare', active_tab='data_creator')
 
 # =======================================================
-# == ROUTE BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO ĐÂY ==
+# == ROUTE MỚI ĐỂ TÌM KIẾM BỆNH NHÂN BẰNG CCCD ==
+# =======================================================
+@creator_bp.route('/search-patient', methods=['POST'])
+@doctor_required
+def search_patient():
+    national_id = request.json.get('national_id')
+    if not national_id:
+        return jsonify({'error': 'Vui lòng nhập CCCD/National ID'}), 400
+
+    mongo_uri = "mongodb+srv://tquan7245:abe123456@abe-cluster.f8itefc.mongodb.net/?retryWrites=true&w=majority&appName=abe-cluster"
+    client = MongoClient(mongo_uri)
+    db = client.ehr_db
+    
+    patient = db.users.find_one({
+        'role': 'patient',
+        'attributes.national_id': national_id
+    })
+
+    if patient:
+        return jsonify({
+            'found': True,
+            'patient_id': str(patient['_id']),
+            'full_name': patient['full_name']
+        })
+    else:
+        return jsonify({'found': False, 'message': 'Không tìm thấy bệnh nhân với CCCD này.'})
+
+# =======================================================
+# == ROUTE TẠO FILE CHÍNH SÁCH (giữ nguyên) ==
 # =======================================================
 @creator_bp.route('/generate-policy', methods=['POST'])
 @doctor_required
@@ -55,12 +82,7 @@ def generate_policy():
         flash("Lỗi: Bắt buộc phải chọn vai trò.", "danger")
         return redirect(url_for('.data_creator'))
 
-    # ==========================================================
-    # == QUAY LẠI LOGIC ĐƠN GIẢN, KHÔNG SẮP XẾP ==
-    # ==========================================================
     policyParts = []
-    
-    # Lặp qua các nhóm theo thứ tự tự nhiên
     for group_name in groups:
         policies_in_group = groups[group_name]
         if len(policies_in_group) > 1:
@@ -70,7 +92,6 @@ def generate_policy():
 
     final_policy = ' and '.join(policyParts)
 
-    # ... (phần tạo và gửi file không đổi) ...
     mem_file = io.BytesIO()
     mem_file.write(final_policy.encode('utf-8'))
     mem_file.seek(0)
@@ -82,17 +103,22 @@ def generate_policy():
         download_name='access_policy.txt'
     )
 
-# ROUTE /encrypt ĐÃ ĐƯỢC CẬP NHẬT ĐỂ NHẬN FILE CHÍNH SÁCH
+# =======================================================
+# == ROUTE /encrypt ĐƯỢC CẬP NHẬT ĐỂ NHẬN patient_id ==
+# =======================================================
 @creator_bp.route('/encrypt', methods=['POST'])
 @doctor_required
 def encrypt():
+    # Nhận thông tin bệnh nhân từ các trường ẩn của form
+    patient_id = request.form.get("patient_id")
     patient_name = request.form.get("patient_name")
+    
     medical_file = request.files.get("medical_file")
     pk_file = request.files.get("public_key_file")
     policy_file = request.files.get("policy_file")
 
-    if not all([patient_name, medical_file, pk_file, policy_file]):
-        flash("Vui lòng điền và chọn đầy đủ 4 tệp được yêu cầu.", "warning")
+    if not all([patient_id, patient_name, medical_file, pk_file, policy_file]):
+        flash("Vui lòng tìm bệnh nhân và chọn đầy đủ các tệp yêu cầu.", "warning")
         return redirect(url_for('.data_creator'))
 
     try:
@@ -118,6 +144,7 @@ def encrypt():
     cpabe_encrypt(aes_key, policy, public_key_path, output_key_path)
 
     session['upload_info'] = {
+        'patient_id': patient_id, # Lưu ID bệnh nhân
         'patient_name': patient_name,
         'policy': policy,
         'doctor_id': session['user']['id']
@@ -126,7 +153,9 @@ def encrypt():
     flash("Mã hóa thành công! Các file đã được tạo trong 'output/'. Vui lòng chọn chúng ở Bước 2.", "success")
     return redirect(url_for('.confirm_upload'))
 
-
+# =======================================================
+# == CÁC ROUTE upload VÀ confirm_upload GIỮ NGUYÊN ==
+# =======================================================
 @creator_bp.route('/confirm_upload')
 @doctor_required
 def confirm_upload():
@@ -134,6 +163,7 @@ def confirm_upload():
         return redirect(url_for('.data_creator'))
     
     info = session['upload_info']
+    # Truyền patient_name vào template để hiển thị
     return render_template('data_creator.html', step='confirm', info=info, active_tab='data_creator')
 
 @creator_bp.route('/upload', methods=['POST'])
@@ -165,6 +195,7 @@ def upload():
         encrypted_key_path=temp_key_path,
         access_policy=info['policy'],
         patient_name=info['patient_name'],
+        patient_id=info['patient_id'], # Thêm patient_id vào lời gọi
         doctor_id=info['doctor_id'], 
         mongo_uri=mongo_uri,
         db_name=db_name,
