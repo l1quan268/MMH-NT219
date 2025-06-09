@@ -3,24 +3,11 @@
 
 {% block head %}
 <style>
-.form-section {
-    margin-bottom: 30px;
-    padding-bottom: 30px;
-    border-bottom: 2px dashed #ccc;
-}
-.form-section:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-    margin-bottom: 0;
-}
-.search-area {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-#encryption-section {
-    transition: opacity 0.5s ease;
-}
+/* CSS không đổi */
+.form-section { margin-bottom: 30px; padding-bottom: 30px; border-bottom: 2px dashed #ccc; }
+.form-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+.search-area { display: flex; gap: 10px; align-items: center; }
+#encryption-section { transition: opacity 0.5s ease; }
 .policy-builder { background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 20px 0; border: 1px solid #dee2e6; }
 .attribute-group { margin-bottom: 20px; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #e9ecef; }
 .attribute-group h4 { color: #2c3e50; margin-bottom: 10px; font-size: 1.1em; }
@@ -28,15 +15,13 @@
 .attribute-option { display: inline-block; padding: 8px 15px; border: 2px solid #ccc; border-radius: 20px; cursor: pointer; user-select: none; transition: all 0.2s ease-in-out; font-size: 0.9em; }
 .attribute-option:hover { border-color: #3498db; background: #eaf5fc; }
 .attribute-option.selected { background-color: #3498db; color: white; border-color: #2980b9; font-weight: 600; }
+.status-panel { background: #e8f5e9; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 5px solid #4CAF50;}
 </style>
 {% endblock %}
 
 {% block content %}
 <h2>📝 Tạo Hồ sơ cho Bệnh nhân</h2>
 
-<!-- ======================================================== -->
-<!-- == BƯỚC 1: TÌM KIẾM BỆNH NHÂN == -->
-<!-- ======================================================== -->
 <div class="form-section">
     <h3>Bước 1: Tìm kiếm Bệnh nhân</h3>
     <p>Nhập số CCCD/National ID của bệnh nhân để xác định và liên kết hồ sơ.</p>
@@ -47,19 +32,13 @@
             <button type="button" class="btn btn-primary" id="search-patient-btn" style="flex-shrink: 0;">🔍 Tìm</button>
         </div>
     </div>
-    <div id="search-result" style="margin-top: 15px;">
-        <!-- Kết quả tìm kiếm sẽ hiện ở đây -->
-    </div>
+    <div id="search-result" style="margin-top: 15px;"></div>
 </div>
 
-<!-- ======================================================== -->
-<!-- == BƯỚC 2: FORM MÃ HÓA (BAN ĐẦU BỊ ẨN/VÔ HIỆU HÓA) == -->
-<!-- ======================================================== -->
 <div id="encryption-section" class="form-section" style="opacity: 0.5; pointer-events: none;">
     <form id="encrypt-form" action="{{ url_for('creator.encrypt') }}" method="POST" enctype="multipart/form-data">
         <h3>Bước 2: Chuẩn bị và Mã hóa</h3>
         
-        <!-- Các trường ẩn để lưu thông tin bệnh nhân đã tìm thấy -->
         <input type="hidden" id="patient_id" name="patient_id">
         <input type="hidden" id="patient_name" name="patient_name">
 
@@ -72,9 +51,17 @@
           <input type="file" id="public_key_file" name="public_key_file" accept=".pk" required class="form-control" />
         </div>
         
+        <div class="form-group">
+          <label for="aes_key_file">File Khóa AES (Tùy chọn)</label>
+          <input type="file" id="aes_key_file" name="aes_key_file" accept=".key" class="form-control" />
+          <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+              Để trống nếu muốn hệ thống tự tạo khóa ngẫu nhiên và an toàn (khuyến nghị).
+          </p>
+        </div>
+        
         <div class="policy-builder">
             <h3>🔒 Xây dựng & Tải về Chính sách</h3>
-            <p>1. Chọn các thuộc tính. 2. Nhấn "Tạo & Tải về Chính sách". 3. Chọn lại file vừa tải ở ô bên dưới.</p>
+            <p>1. Chọn thuộc tính. 2. Nhấn "Tạo & Tải về". 3. Chọn lại file ở ô dưới.</p>
             <div class="attribute-group">
                 <h4>👥 Vai trò (chọn ít nhất 1):</h4>
                 <div class="attribute-selector">
@@ -94,7 +81,7 @@
         </div>
 
         <div class="form-group">
-          <label for="policy_file">File Chính sách (chọn lại file <code>.txt</code> vừa tải)</label>
+          <label for="policy_file">File Chính sách (chọn lại file <code>.txt</code>)</label>
           <input type="file" id="policy_file" name="policy_file" accept=".txt" required class="form-control" />
         </div>
         
@@ -102,13 +89,12 @@
     </form>
 </div>
 
-<!-- Phần hiển thị xác nhận upload (Bước 3) -->
 {% if step == 'confirm' %}
 <div class="form-section">
     <h3>Bước 3: Tải lên Cloud</h3>
     <div class="status-panel">
         <h4>✅ Mã hóa thành công!</h4>
-        <p>Các tệp đã được tạo trong thư mục <strong>output/</strong>. Bây giờ, hãy chọn lại chúng để tải lên Cloud cho bệnh nhân <strong>{{ info.patient_name }}</strong>.</p>
+        <p>Các tệp đã được tạo trong <strong>output/</strong>. Bây giờ, hãy chọn lại chúng để tải lên Cloud cho <strong>{{ info.patient_name }}</strong>.</p>
     </div>
     <form id="upload-form" action="{{ url_for('creator.upload') }}" method="POST" enctype="multipart/form-data">
         <div class="form-group">
@@ -123,14 +109,15 @@
     </form>
 </div>
 {% endif %}
-
 {% endblock %}
 
 
 {% block scripts %}
+<!-- JavaScript không thay đổi -->
+
+<!-- JavaScript không cần thay đổi, vẫn giữ nguyên như cũ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ---- LOGIC TÌM KIẾM BỆNH NHÂN ----
     const searchBtn = document.getElementById('search-patient-btn');
     const searchInput = document.getElementById('search_national_id');
     const searchResultDiv = document.getElementById('search-result');
@@ -173,7 +160,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ---- LOGIC POLICY BUILDER ----
     document.querySelectorAll('.attribute-option').forEach(option => {
         option.addEventListener('click', function() { this.classList.toggle('selected'); });
     });
