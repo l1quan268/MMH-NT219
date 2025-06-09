@@ -8,9 +8,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
             padding: 20px;
+            color: #333;
         }
         .container {
             max-width: 1200px;
@@ -51,7 +52,7 @@
             position: relative;
             text-align: center;
             text-decoration: none;
-            color: black;
+            color: #2c3e50;
         }
         .tab:hover {
             background: #e9ecef;
@@ -64,7 +65,7 @@
         .tab.active::after {
             content: '';
             position: absolute;
-            bottom: 0;
+            bottom: -1px;
             left: 0;
             right: 0;
             height: 3px;
@@ -73,6 +74,16 @@
         .content {
             padding: 40px;
         }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+        }
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+        .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+        .alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb; }
         .form-group {
             margin-bottom: 25px;
         }
@@ -95,6 +106,9 @@
             border-color: #3498db;
         }
         .btn {
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
             background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
             padding: 12px 30px;
@@ -103,48 +117,14 @@
             cursor: pointer;
             font-size: 1.1em;
             transition: all 0.3s ease;
-            margin: 10px 5px;
+            margin: 10px 5px 10px 0;
         }
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
         }
-        .btn-success {
-            background: linear-gradient(135deg, #27ae60, #229954);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-        }
-        .status-panel {
-            background: #f8f9fa;
-            border-left: 4px solid #3498db;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .attribute-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 15px 0;
-        }
-        .attribute-option {
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        .attribute-option:hover {
-            border-color: #3498db;
-            background: #e3f2fd;
-        }
-        .attribute-option.selected {
-            background: #3498db;
-            color: white;
-            border-color: #2980b9;
-        }
+        .btn-success { background: linear-gradient(135deg, #27ae60, #229954); }
+        .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -154,20 +134,24 @@
             <h1>🏥 EHR ABE Demo System</h1>
             <p>Hệ thống Bảo mật Hồ sơ Bệnh án Điện tử sử dụng Attribute-Based Encryption</p>
         </div>
-      <div class="tabs">
-    {% if session.get('user') %}
-        {% if session.user.role == 'doctor' %}
-            <a href="{{ url_for('creator.data_creator') }}" class="tab {% if active_tab == 'data_creator' %}active{% endif %}">📝 Tạo Hồ sơ</a>
-            <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Xem Hồ sơ</a>
-        {% elif session.user.role == 'patient' %}
-             <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Hồ sơ của tôi</a>
-        {% endif %}
-        <a href="{{ url_for('auth.logout') }}" class="tab">🚪 Đăng xuất ({{ session.user.name }})</a>
-    {% else %}
-        <a href="{{ url_for('auth.login') }}" class="tab">🔑 Đăng nhập</a>
-        <a href="{{ url_for('auth.register') }}" class="tab">📝 Đăng ký</a>
-    {% endif %}
-</div>
+        <nav class="tabs">
+            {% if session.get('user') %}
+                {% if session.user.role == 'doctor' %}
+                    <a href="{{ url_for('creator.data_creator') }}" class="tab {% if active_tab == 'data_creator' %}active{% endif %}">📝 Tạo Hồ sơ</a>
+                    <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Xem Hồ sơ</a>
+                {% elif session.user.role == 'patient' %}
+                     <a href="{{ url_for('user.data_user') }}" class="tab {% if active_tab == 'data_user' %}active{% endif %}">👤 Hồ sơ của tôi</a>
+                     <!-- ======================================================== -->
+                     <!-- == THÊM TAB MỚI CHO BỆNH NHÂN == -->
+                     <!-- ======================================================== -->
+                     <a href="{{ url_for('user.patient_upload') }}" class="tab {% if active_tab == 'patient_upload' %}active{% endif %}">📤 Tải lên Hồ sơ</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="tab">🚪 Đăng xuất ({{ session.user.name }})</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="tab {% if request.endpoint == 'auth.login' %}active{% endif %}">🔑 Đăng nhập</a>
+                <a href="{{ url_for('auth.register') }}" class="tab {% if request.endpoint == 'auth.register' %}active{% endif %}">📝 Đăng ký</a>
+            {% endif %}
+        </nav>
         <div class="content">
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
@@ -180,7 +164,6 @@
         </div>
     </div>
     {% block scripts %}
-   
     {% endblock %}
 </body>
 </html>

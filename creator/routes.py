@@ -1,5 +1,3 @@
-# home/quan05/doan/creator/routes.py
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -121,16 +119,9 @@ def encrypt():
     pk_file.save(public_key_path)
 
     output_ciphertext_path = os.path.join(OUTPUT_FOLDER, "ciphertext.bin")
-    
-    # ==========================================================
-    # == SỬA Ở ĐÂY: Truyền `provided_aes_key` vào hàm `aes_encrypt` ==
-    # ==========================================================
     aes_key_used = aes_encrypt(input_path, output_ciphertext_path, key=provided_aes_key)
     
     output_key_path = os.path.join(OUTPUT_FOLDER, "aes_key_cpabe.ct")
-    # ==========================================================
-    # == SỬA Ở ĐÂY: Mã hóa khóa `aes_key_used` thực tế ==
-    # ==========================================================
     cpabe_encrypt(aes_key_used, policy, public_key_path, output_key_path)
 
     session['upload_info'] = {
@@ -172,6 +163,11 @@ def upload():
     mongo_uri = "mongodb+srv://tquan7245:abe123456@abe-cluster.f8itefc.mongodb.net/?retryWrites=true&w=majority&appName=abe-cluster"
     db_name = "ehr_db"
     
+    # ====================================================================
+    # == SỬA Ở ĐÂY: Thêm các tham số còn thiếu vào lời gọi send_to_cloud ==
+    # ====================================================================
+    record_description = f"Hồ sơ do bác sĩ {session['user']['name']} tạo cho bệnh nhân {info['patient_name']}."
+    
     inserted_id = send_to_cloud(
         ciphertext_path=temp_ciphertext_path,
         encrypted_key_path=temp_key_path,
@@ -179,6 +175,8 @@ def upload():
         patient_name=info['patient_name'],
         patient_id=info['patient_id'],
         doctor_id=info['doctor_id'], 
+        record_description=record_description, # Thêm tham số này
+        uploaded_by='doctor', # Thêm tham số này
         mongo_uri=mongo_uri,
         db_name=db_name,
         collection_name="medical_records"
