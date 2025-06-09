@@ -50,30 +50,21 @@ def search_patient():
 @creator_bp.route('/generate-policy', methods=['POST'])
 @doctor_required
 def generate_policy():
-    policies_data = request.form.getlist('policies')
-    if not policies_data:
-        return "Lỗi: Không có thuộc tính nào được chọn.", 400
+    # JavaScript đã xây dựng sẵn chuỗi policy, ta chỉ cần nhận nó từ form
+    final_policy = request.form.get('policy_string')
+    if not final_policy:
+        return "Lỗi: Không có chính sách nào được tạo từ client.", 400
 
-    groups = {}
-    for item in policies_data:
-        policy, group = item.split('|')
-        if not groups.get(group):
-            groups[group] = []
-        groups[group].append(policy)
-
-    if not groups.get('role'):
-        return "Lỗi: Bắt buộc phải chọn vai trò.", 400
-
-    policyParts = []
-    for group_name in groups:
-        policies_in_group = groups[group_name]
-        if len(policies_in_group) > 1:
-            policyParts.append(f"({' or '.join(policies_in_group)})")
-        else:
-            policyParts.append(policies_in_group[0])
-    final_policy = ' and '.join(policyParts)
+    # Tạo file trong bộ nhớ từ chuỗi đã nhận
     mem_file = io.BytesIO(final_policy.encode('utf-8'))
-    return send_file(mem_file, mimetype='text/plain', as_attachment=True, download_name='access_policy.txt')
+    
+    # Gửi file về cho trình duyệt của người dùng để tải xuống
+    return send_file(
+        mem_file,
+        mimetype='text/plain',
+        as_attachment=True,
+        download_name='access_policy.txt'
+    )
 
 @creator_bp.route('/encrypt', methods=['POST'])
 @doctor_required

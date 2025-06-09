@@ -71,24 +71,35 @@
 <!-- ======================================================== -->
 <div class="step-section">
     <h3>Bước 2: Yêu cầu Khóa Giải mã (Secret Key)</h3>
-    <p>Chọn các thuộc tính bạn có để yêu cầu hệ thống cấp phát một Khóa Bí mật tương ứng.</p>
-    <div class="policy-builder">
-        <div class="attribute-group">
-            <h4>👥 Vai trò của tôi là:</h4>
-            <div class="attribute-selector">
-                <div class="attribute-option" data-attr="role:Doctor">👨‍⚕️ Bác sĩ</div>
-                <div class="attribute-option" data-attr="role:Nurse">👩‍⚕️ Y tá</div>
-            </div>
+    
+    {% if session.user.role == 'doctor' %}
+        <p>Hệ thống đã ghi nhận các thuộc tính của bạn. Nhấn nút dưới đây để yêu cầu cấp một Khóa Bí mật tương ứng.</p>
+        <div class="policy-builder">
+            <h4>Các thuộc tính hiện tại của bạn:</h4>
+            {% if session.user.attributes %}
+                <ul>
+                {% for attr in session.user.attributes %}
+                    <li><code>{{ attr }}</code></li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>Không có thuộc tính nào được ghi nhận.</p>
+            {% endif %}
+
+            <!-- Form này sẽ gửi yêu cầu mà không cần người dùng chọn gì thêm -->
+            <form action="{{ url_for('user.request_secret_key') }}" method="POST">
+                <button type="submit" class="btn btn-success">🔑 Yêu cầu cấp khóa</button>
+            </form>
         </div>
-        <div class="attribute-group">
-            <h4>🏥 Chuyên khoa của tôi là:</h4>
-            <div class="attribute-selector">
-                <div class="attribute-option" data-attr="dept:Cardiology">❤️ Khoa Tim mạch</div>
-                <div class="attribute-option" data-attr="dept:Neurology">🧠 Khoa Thần kinh</div>
-            </div>
-        </div>
-        <button type="button" class="btn btn-success" id="request-key-btn">🔑 Yêu cầu cấp khóa</button>
-    </div>
+    {% else %}
+         <!-- Bệnh nhân có thể có quy trình yêu cầu khóa khác hoặc đơn giản hơn -->
+         <p>Với vai trò bệnh nhân, bạn có thể yêu cầu khóa giải mã cho các hồ sơ của mình.</p>
+         <form action="{{ url_for('user.request_secret_key') }}" method="POST">
+            <!-- Gửi đi thuộc tính mặc định của bệnh nhân -->
+            <input type="hidden" name="attributes" value="role:Patient">
+            <button type="submit" class="btn btn-success">🔑 Yêu cầu cấp khóa</button>
+        </form>
+    {% endif %}
 </div>
 
 

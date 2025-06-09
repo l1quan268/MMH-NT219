@@ -3,33 +3,33 @@
 
 {% block head %}
 <style>
+/* CSS không đổi */
 .form-section { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px dashed #ccc; }
 .form-section:last-child { border-bottom: none; }
 .policy-builder { background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 20px 0; border: 1px solid #dee2e6; }
 .attribute-group { margin-bottom: 20px; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #e9ecef; }
 .attribute-group h4 { color: #2c3e50; margin-bottom: 10px; font-size: 1.1em; }
 .attribute-selector { display: flex; flex-wrap: wrap; gap: 10px; }
-.attribute-option { display: inline-block; padding: 8px 15px; border: 2px solid #ccc; border-radius: 20px; cursor: pointer; user-select: none; transition: all 0.2s ease-in-out; font-size: 0.9em; }
-.attribute-option:hover { border-color: #3498db; background: #eaf5fc; }
-.attribute-option.selected { background-color: #3498db; color: white; border-color: #2980b9; font-weight: 600; }
+.attribute-option { display: inline-block; padding: 8px 15px; border: 2px solid #ccc; border-radius: 20px; cursor: pointer; user-select: none; }
+.attribute-option.selected { background-color: #3498db; color: white; border-color: #2980b9; }
 textarea#policy_expression { background-color: #e9ecef; font-family: monospace;}
 .status-panel { background: #e8f5e9; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 5px solid #4CAF50;}
 </style>
 {% endblock %}
 
+
 {% block content %}
 <h2>📁 Tải lên Hồ sơ Sức khỏe Cá nhân</h2>
 
-<!-- ====================================================================== -->
-<!-- ==================== BƯỚC 1: FORM MÃ HÓA DỮ LIỆU ==================== -->
-<!-- ====================================================================== -->
+<!-- ==================== BƯỚC 1: FORM MÃ HÓA ==================== -->
+{% if step == 'prepare' or not step %}
 <div class="form-section">
     <h3>Bước 1: Chuẩn bị và Mã hóa</h3>
     <p>Chọn hồ sơ của bạn, xây dựng chính sách truy cập, sau đó nhấn "Mã hóa" để tạo các file an toàn trong thư mục <code>output/</code>.</p>
     
     <form id="encrypt-form" action="{{ url_for('user.patient_upload') }}" method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
         <div class="form-group">
-          <label for="record_description">Mô tả hồ sơ (ví dụ: Kết quả xét nghiệm máu ngày...)</label>
+          <label for="record_description">Mô tả hồ sơ</label>
           <input type="text" id="record_description" name="record_description" required class="form-control" />
         </div>
         <div class="form-group">
@@ -43,12 +43,11 @@ textarea#policy_expression { background-color: #e9ecef; font-family: monospace;}
         
         <div class="policy-builder">
             <h3>🔒 Xây dựng Chính sách Truy cập</h3>
-            <p>Chọn những người bạn cho phép xem hồ sơ này.</p>
             <div class="attribute-group">
                 <h4>👥 Vai trò (chọn ít nhất 1):</h4>
                 <div class="attribute-selector">
                     <div class="attribute-option" data-group="role" data-policy="role:Doctor">👨‍⚕️ Bác sĩ</div>
-                    <div class="attribute-option" data-group="role" data-policy="role:Nurse">👩‍⚕️ Y tá</div>
+                    <div class="attribute-option" data-group="role" data-policy="role:Patient">👤 Chính bạn</div>
                 </div>
             </div>
             <div class="attribute-group">
@@ -68,10 +67,11 @@ textarea#policy_expression { background-color: #e9ecef; font-family: monospace;}
         <button type="submit" class="btn btn-success" style="width: 100%;">🔒 Mã hóa và Tạo file Output</button>
     </form>
 </div>
+{% endif %}
 
-<!-- ====================================================================== -->
-<!-- ==================== BƯỚC 2: FORM UPLOAD DỮ LIỆU ===================== -->
-<!-- ====================================================================== -->
+<!-- ======================================================== -->
+<!-- == BƯỚC 2 ĐÃ ĐƯỢC THÊM LẠI VÀO ĐÂY == -->
+<!-- ======================================================== -->
 {% if step == 'confirm' %}
 <div class="form-section">
     <h3>Bước 2: Tải lên Cloud</h3>
@@ -93,11 +93,12 @@ textarea#policy_expression { background-color: #e9ecef; font-family: monospace;}
     </form>
 </div>
 {% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// JavaScript cho Policy Builder (giữ nguyên)
+// JavaScript cho Policy Builder (không đổi)
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.attribute-option').forEach(option => {
         option.addEventListener('click', function() { this.classList.toggle('selected'); });
@@ -109,31 +110,60 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('generate-policy-btn').addEventListener('click', function() {
-        const groups = {};
+        // ... (Logic tạo chính sách đặc biệt or role:Patient giữ nguyên) ...
+        let isPatientSelected = false;
+        const doctorPolicies = {};
         const selectedElems = document.querySelectorAll('.attribute-option.selected');
         if (selectedElems.length === 0) {
-            alert('Vui lòng chọn ít nhất một thuộc tính!');
+            alert('Vui lòng chọn ít nhất một vai trò!');
             return;
         }
         selectedElems.forEach(el => {
-            const group = el.getAttribute('data-group');
             const policy = el.getAttribute('data-policy');
-            if (!groups[group]) { groups[group] = []; }
-            groups[group].push(policy);
-        });
-        if (!groups.role || groups.role.length === 0) {
-            alert('Bắt buộc phải chọn ít nhất một "Vai trò"!');
-            return;
-        }
-        const policyParts = [];
-        for (const policies of Object.values(groups)) {
-            if (policies.length > 1) {
-                policyParts.push(`(${policies.join(' or ')})`);
+            if (policy === 'role:Patient') {
+                isPatientSelected = true;
             } else {
-                policyParts.push(policies[0]);
+                const group = el.getAttribute('data-group');
+                if (!doctorPolicies[group]) { doctorPolicies[group] = []; }
+                doctorPolicies[group].push(policy);
+            }
+        });
+        
+        let finalPolicy = "";
+        const doctorPolicyParts = [];
+        if (Object.keys(doctorPolicies).length > 0) {
+             if (!doctorPolicies.role || doctorPolicies.role.length === 0) {
+                alert('Nếu chọn các thuộc tính khác, bạn phải chọn vai trò "Bác sĩ"!');
+                return;
+            }
+            const sortedGroups = Object.keys(doctorPolicies).sort();
+            for (const groupName of sortedGroups) {
+                const policies = doctorPolicies[groupName];
+                if (policies.length > 1) {
+                    doctorPolicyParts.push(`(${policies.join(' or ')})`);
+                } else {
+                    doctorPolicyParts.push(policies[0]);
+                }
             }
         }
-        document.getElementById('policy_expression').value = policyParts.join(' and ');
+        const doctorPolicyString = doctorPolicyParts.join(' and ');
+
+        if (isPatientSelected) {
+            if (doctorPolicyString) {
+                finalPolicy = `(${doctorPolicyString}) or role:Patient`;
+            } else {
+                finalPolicy = 'role:Patient';
+            }
+        } else {
+            if (doctorPolicyString) {
+                finalPolicy = doctorPolicyString;
+            } else {
+                alert('Vui lòng chọn ít nhất một vai trò!');
+                return;
+            }
+        }
+        
+        document.getElementById('policy_expression').value = finalPolicy;
         alert('✅ Chính sách đã được tạo!');
     });
 });
